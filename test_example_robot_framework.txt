@@ -1,0 +1,101 @@
+*** Settings ***
+Library           Selenium2Library
+Test Setup        Test_Setup_Steps
+Test Teardown     Close Browser
+
+*** Keywords ***
+Test_Setup_Steps
+    Set Selenium Speed    0
+    Open Browser    ${login address}
+    Maximize Browser Window
+    Input Text    inputUsername    ${login}
+    Input Text    inputPassword    ${password}
+    Click Button  tag=button
+
+Insert Credentials Add    [Arguments]  ${name}  ${address}
+    Click Link    /mainteacher/school_add/
+    Wait Until Page Contains Element  inputSchoolName
+    Input Text    inputSchoolName    ${name}
+    Input Text    inputNumber    ${address}
+    Click Button    name=add_button
+
+Insert Credentials Edit    [Arguments]  ${name}  ${address}
+    Click Link  /mainteacher/school_update/5
+    Wait Until Page Contains Element  inputSchoolName
+    Input Text    inputSchoolName    ${name}
+    Input Text    inputNumber    ${address}
+    Click Button    name=add_button
+
+*** Variables ***
+${login address-public}  https://commercial-secret.com
+${login address-local}  http://127.0.0.1:8000/
+${login}  johndoe
+${password}  1111
+
+${correct address}  вул. Євгена Коновальця, 19
+${correct name}  Школа №28
+${correct name2}  Школа №80
+${name roman}  School #28
+${address roman}  Verbova Street, 35
+${cyrrilic address wrong}  Адреса 200
+${cyrrilic name wrong}  Школа 100
+${correct address for edit}  вул. Мельника, 67
+${correct name for edit}  Школа №25
+${message}  ${EMPTY}
+${name starting lower}  нвк "веселка"
+${address starting upper}  ВУЛ. Макарова, 19
+
+*** Testcases ***
+1. Pop-up window for add school onclick the button "Add"
+  Click Link  /mainteacher/school_add/
+  Wait Until Page Contains Element  inputSchoolName
+  Page Should Contain  Назва*
+  Page Should Contain  Адресса*
+
+2. Fields to enter credentials should be empty after cancel and retry
+  Click Link  /mainteacher/school_add/
+  Wait Until Page Contains Element    inputSchoolName
+  Input Text    inputSchoolName    ${correct name}
+  Input Text    inputNumber    ${correct address}
+  Reload page
+  Click Link    /mainteacher/school_add/
+  Wait Until Page Contains Element    inputSchoolName
+  ${result}    Get Value  inputSchoolName
+  Should Be Equal    ${result}  ${EMPTY}
+
+3. New school should be added with correct credentials
+  Insert Credentials Add    ${correct name}  ${correct address}
+  Reload page
+  Page Should Contain  ${correct name}
+
+4. Add with name using roman alphabet
+  Insert Credentials Add    ${name roman}  ${empty}
+  Page Should Contain    Некоректно введено назву.
+
+5. Add with address using roman alphabet
+  Insert Credentials Add    ${empty}  ${address roman}
+  Page Should Contain    Некоректно введено адресу.
+
+6. Add with empty name
+  Insert Credentials Add    ${empty}  ${correct address}
+  Page Should Contain    Некоректно введено назву.
+
+7. Add with empty address
+  Insert Credentials Add    ${correct name2}  ${empty}
+  Page Should Contain    Некоректно введено адресу.
+
+8. Add with wrong cyrrilic school name
+  Insert Credentials Add    ${cyrrilic name wrong}  ${empty}
+  Page Should Contain    Некоректно введено назву.
+
+9. Add with wrong cyrrilic address
+  Insert Credentials Add    ${empty}  ${cyrrilic address wrong}
+  Page Should Contain    Некоректно введено адресу.
+
+10. Add with already exists name for school
+  Insert Credentials Add    ${correct name}  ${empty}
+  Page Should Contain    Школа з такою назвою вже існує.
+
+
+
+
