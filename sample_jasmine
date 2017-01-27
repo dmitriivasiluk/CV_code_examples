@@ -1,0 +1,121 @@
+test.it('should toggle guest access by room owner(public room)', function() {
+    this.chatPage.openLobby();
+    this.chatPage.getMainColumn().getLobbyHeader().createRoom(publicRoomTitle, roomTopic, false);
+    this.chatPage.getChatHeader().enableGuestAccess();
+    this.chatPage.getRightSidebar().showRoster();
+    this.chatPage.getRightSidebar().waitTillRosterLocated();
+
+    return Promise.all([
+            expect(this.chatPage.getChatHeader().hasGuestAccessLozenge()).to.eventually.be.true,
+            expect(this.chatPage.getRightSidebar().getGuestAccessBadge().isDisplayed(), 'should display guest access badge in the sidebar').to.eventually.be.true
+        ])
+        .then(() => {
+            this.chatPage.getChatHeader().disableGuestAccess();
+            this.chatPage.getDialogsContainer().getDisableGuestAccessDialog().bind().submit();
+            return Promise.all([
+                expect(this.chatPage.getChatHeader().hasGuestAccessLozenge()).to.eventually.be.false,
+                expect(this.chatPage.isPresent(this.chatPage.getRightSidebar().getGuestAccessBadgeLocator()), 'should no longer display the guest access badge in the sidebar').to.eventually.be.false
+            ]);
+        });
+});
+
+test.it('should toggle guest access by room owner(private room)', function() {
+    this.chatPage.openLobby();
+    this.chatPage.getMainColumn().getLobbyHeader().createRoom(privateRoomTitle, roomTopic, true, false, false);
+    let dialogContainer = this.chatPage.getDialogsContainer().getInviteUsersDialog();
+    dialogContainer.waitTillDialogOpened();
+    dialogContainer.bind();
+    dialogContainer.openUsersList();
+    dialogContainer.selectUser();
+    dialogContainer.bind().submit();
+    this.chatPage.getChatHeader().enableGuestAccess();
+    this.chatPage.getRightSidebar().showRoster();
+    this.chatPage.getRightSidebar().waitTillRosterLocated();
+    return Promise.all([
+            expect(this.chatPage.getChatHeader().hasGuestAccessLozenge()).to.eventually.be.true,
+            expect(this.chatPage.getRightSidebar().getGuestAccessBadge().isDisplayed(), 'should display guest access badge in the sidebar').to.eventually.be.true
+        ])
+        .then(() => {
+            this.chatPage.getChatHeader().disableGuestAccess();
+            this.chatPage.getDialogsContainer().getDisableGuestAccessDialog().bind().submit();
+            return Promise.all([
+                expect(this.chatPage.getChatHeader().hasGuestAccessLozenge()).to.eventually.be.false,
+                expect(this.chatPage.isPresent(this.chatPage.getRightSidebar().getGuestAccessBadgeLocator()), 'should no longer display the guest access badge in the sidebar').to.eventually.be.false
+            ]);
+        });
+});
+
+test.it('should not be able to toggle guest access by non-admin(public room)', function() {
+    let user = this.api.getState().getUser();
+    this.chatPage.openLobby();
+    this.chatPage.getLobbyPanel().selectChat(publicRoomTitle);
+    return Promise.all([
+            expect(this.chatPage.getChatHeader().hasGuestAccessLozenge()).to.eventually.be.false,
+            expect(this.chatPage.isPresent(this.chatPage.getRightSidebar().getGuestAccessBadgeLocator()), 'should display the guest access badge in the sidebar').to.eventually.be.false
+        ])
+        .then(() => {
+            return this.chatPage.logout(false)
+        })
+        .then(() => {
+            return new SignInPage(this.driver).bind().loginToChat(user)
+        })
+        .then(() => {
+            this.chatPage.getMainColumn().getLobbyPanel().selectChat(publicRoomTitle);
+            this.chatPage.getChatHeader().enableGuestAccess();
+            return Promise.all([
+                expect(this.chatPage.getChatHeader().hasGuestAccessLozenge()).to.eventually.be.false,
+                expect(this.chatPage.isPresent(this.chatPage.getRightSidebar().getGuestAccessBadgeLocator()), 'should display the guest access badge in the sidebar').to.eventually.be.false
+            ]);
+        });
+});
+
+test.it('should not be able to toggle guest access by non-admin(private room)', function() {
+            this.chatPage.openLobby();
+            this.chatPage.getLobbyPanel().selectChat(privateRoomTitle);
+            return Promise.all([
+                    expect(this.chatPage.getChatHeader().hasGuestAccessLozenge()).to.eventually.be.false,
+                    expect(this.chatPage.isPresent(this.chatPage.getRightSidebar().getGuestAccessBadgeLocator()), 'should display the guest access badge in the
+                        sidebar ').to.eventually.be.false
+                    ])
+                .then(() => {
+                    this.chatPage.getChatHeader().enableGuestAccess();
+                    return Promise.all([
+                        expect(this.chatPage.getChatHeader().hasGuestAccessLozenge()).to.eventually.be.false,
+                        expect(this.chatPage.isPresent(this.chatPage.getRightSidebar().getGuestAccessBadgeLocator()), 'should display the guest access badge in the sidebar').to.eventually.be.false
+                    ]);
+                });
+            });
+
+        test.it('should boot guest from room and disable url to guest access after disabling guest access', function(done) {
+            let name = uuid.v1(),
+                guest,
+                sidebar,
+                dialog;
+
+            this.chatPage.openLobby();
+            this.chatPage.getLobbyHeader().createRoom(name, topic, true);
+            sidebar = this.chatPage.getRightSidebar();
+            this.chatPage.getChatHeader().enableGuestAccess();
+            sidebar.showRoster();
+            sidebar.waitTillRosterLocated();
+            sidebar.waitTillGuestAccessBadgePresent();
+            sidebar.openGuestAccessLink();
+            this.chatPage.waitForNextWindow();
+            this.chatPage.switchToNextWindow();
+            this.chatPage.getInvitationPage().bind();
+            guest = this.chatPage.getInvitationPage().enter();
+            this.chatPage.bind(true);
+            this.chatPage.switchToMainWindow();
+            this.chatPage.bind(false);
+            sidebar.waitTillMemberAppears(guest);
+            return expect(sidebar.getMembers(), 'should display room admin and guest').to.eventually.have.length(2)
+                .then(() => {
+                    this.chatPage.getChatHeader().disableGuestAccess();
+                    this.chatPage.getDialogsContainer().getDisableGuestAccessDialog().bind().submit();
+                    return expect(this.chatPage.getRightSidebar().getMembers(), 'should display only room admin').to.eventually.have.length(1).then(() => {
+                        this.chatPage.switchToNextWindow();
+                        this.chatPage.closeWindow();
+                        this.chatPage.switchToMainWindow();
+                    }).then(done.bind(null, null), done);
+                });
+        });
