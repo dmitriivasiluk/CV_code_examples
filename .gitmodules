@@ -1,0 +1,3 @@
+[submodule "some_repo"]
+	path = some_repo
+	url = C:\\Users\\dvasy\\Documents\\some_repo
